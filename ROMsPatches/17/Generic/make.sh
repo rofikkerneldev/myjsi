@@ -21,7 +21,7 @@ else
     exit 1
 fi
 
-sed -i "/dataservice_app/d" $product/etc/selinux/product_seapp_contexts
-sed -i "/dataservice_app/d" $system_ext/etc/selinux/system_ext_seapp_contexts
+[ -f "$product/etc/selinux/product_seapp_contexts" ] && sed -i "/dataservice_app/d" "$product/etc/selinux/product_seapp_contexts"
+[ -f "$system_ext/etc/selinux/system_ext_seapp_contexts" ] && sed -i "/dataservice_app/d" "$system_ext/etc/selinux/system_ext_seapp_contexts"
 
 

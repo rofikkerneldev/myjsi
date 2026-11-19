@@ -108,6 +108,7 @@ echo "Patching started..."
 Patches/$android_version/make.sh "$BASE_DIR"
 Patches/common/make.sh "$BASE_DIR"
 ROMsPatches/$android_version/$ROM_TYPE/make.sh "$BASE_DIR"
+mkdir -p "$BASE_DIR/system/apex"
 tar -xf "Patches/apex/$android_version.tar.xz" -C "$BASE_DIR/system/apex"
 
 if [ -n "$(ls -A "$BASE_DIR/vendor" 2>/dev/null)" ]; then
@@ -115,6 +116,7 @@ if [ -n "$(ls -A "$BASE_DIR/vendor" 2>/dev/null)" ]; then
   rm -rf "$BASE_DIR/vendor/"*
 fi
 
+displayid=""
 if [[ $(grep "ro.build.display.id" "$BASE_DIR/system/build.prop") ]]; then
     displayid="ro.build.display.id"
 elif [[ $(grep "ro.system.build.id" "$BASE_DIR/system/build.prop") ]]; then
@@ -122,9 +124,13 @@ elif [[ $(grep "ro.system.build.id" "$BASE_DIR/system/build.prop") ]]; then
 elif [[ $(grep "ro.build.id" "$BASE_DIR/system/build.prop") ]]; then
     displayid="ro.build.id"
 fi
-displayid2=$(echo "$displayid" | sed 's/\./\\./g')
-bdisplay=$(grep "$displayid" "$BASE_DIR/system/build.prop" | sed 's/\./\\./g; s:/:\\/:g; s/\,/\\,/g; s/\ /\\ /g')
-sed -i "s/$bdisplay/$displayid2=Rofikkerneldev" "$BASE_DIR/system/build.prop"
+if [ -n "$displayid" ]; then
+    displayid2=$(echo "$displayid" | sed 's/\./\\./g')
+    bdisplay=$(grep "$displayid" "$BASE_DIR/system/build.prop" | sed 's/\./\\./g; s:/:\\/:g; s/\,/\\,/g; s/\ /\\ /g')
+    if [ -n "$bdisplay" ]; then
+        sed -i "s/$bdisplay/$displayid2=Rofikkerneldev/" "$BASE_DIR/system/build.prop"
+    fi
+fi
 
 current_date=$(date +"%Y-%m-%d")
 echo "Create $ROM_TYPE-AB-$android_version-$current_date.img"
@@ -132,5 +138,9 @@ rm -rf "Output"
 mkdir -p "Output"
 Tools/mkimage/mkimage.sh "$BASE_DIR" "Output/system.img"
 cd Output
-zip -9 -o "system.zip" "system.img"
+if command -v 7z &>/dev/null; then
+  7z a -tzip -mx=1 "system.zip" "system.img"
+else
+  zip -9 -o "system.zip" "system.img"
+fi
 

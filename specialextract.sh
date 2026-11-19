@@ -90,17 +90,28 @@ fi
 for partition in $partitions; do
     if [[ -f "UnpackedROMs/$partition.img" ]]; then
         echo "Unpacking file: UnpackedROMs/$partition.img"
-        mkdir -p "UnpackedROMs/temp_mount"
         mkdir -p "UnpackedROMs/$partition"
-        fs_type=$(blkid -o value -s TYPE "UnpackedROMs/$partition.img" 2>/dev/null)
-        if [[ "$fs_type" == "ext2" || "$fs_type" == "ext4" ]]; then
-            sudo mount -o loop,ro -t ext4 "UnpackedROMs/$partition.img" "UnpackedROMs/temp_mount"
-        else
+        fs_type=$(/sbin/blkid -o value -s TYPE "UnpackedROMs/$partition.img" 2>/dev/null || blkid -o value -s TYPE "UnpackedROMs/$partition.img" 2>/dev/null)
+        echo "Partition $partition filesystem type: $fs_type"
+        if command -v fsck.erofs &>/dev/null && [[ "$fs_type" == "erofs" ]]; then
+            fsck.erofs --extract="UnpackedROMs/$partition" "UnpackedROMs/$partition.img"
+        elif [[ "$fs_type" == "ext2" || "$fs_type" == "ext4" ]]; then
+            7z x -y "UnpackedROMs/$partition.img" -o"UnpackedROMs/$partition/" 2>/dev/null || {
+                mkdir -p "UnpackedROMs/temp_mount"
+                sudo mount -o loop,ro -t ext4 "UnpackedROMs/$partition.img" "UnpackedROMs/temp_mount"
+                cp -a "UnpackedROMs/temp_mount/." "UnpackedROMs/$partition/"
+                sudo umount -R "UnpackedROMs/temp_mount"
+            }
+        elif command -v sudo &>/dev/null && sudo -n true 2>/dev/null; then
+            mkdir -p "UnpackedROMs/temp_mount"
             sudo mount "UnpackedROMs/$partition.img" "UnpackedROMs/temp_mount"
+            sudo cp -a "UnpackedROMs/temp_mount/." "UnpackedROMs/$partition/"
+            sudo chown -R $USER:$USER "UnpackedROMs/$partition"
+            sudo umount -R "UnpackedROMs/temp_mount"
+        else
+            fsck.erofs --extract="UnpackedROMs/$partition" "UnpackedROMs/$partition.img" 2>/dev/null || \
+            7z x -y "UnpackedROMs/$partition.img" -o"UnpackedROMs/$partition/"
         fi
-    sudo cp -a "UnpackedROMs/temp_mount/." "UnpackedROMs/$partition/"
-sudo chown -R $USER:$USER "UnpackedROMs/$partition"
-        sudo umount -R "UnpackedROMs/temp_mount"
     fi
 done
 
@@ -114,10 +125,11 @@ for partition in $partitions; do
             continue
         fi
         if [ -d "UnpackedROMs/$partition" ]; then
-            echo "Moving $partition into root"
-            mv "UnpackedROMs/$partition" "$source_dir/.."
+            echo "Moving $partition into root: $source_dir"
+            rm -rf "$source_dir"
+            mv "UnpackedROMs/$partition" "$source_dir"
         fi
     fi
 done
 
-sudo bash FoxetGSITool.sh "UnpackedROMs/system" "$ROM_TYPE"
+bash FoxetGSITool.sh "UnpackedROMs/system" "$ROM_TYPE"

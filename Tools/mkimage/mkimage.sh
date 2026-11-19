@@ -4,7 +4,7 @@ BASE_DIR=$1
 OUTPUT=$2
 SCRIPT_DIR=$(dirname "$0")
 TEMP_DIR="$SCRIPT_DIR/../../Temp"
-SIZE=$(du -sk "$BASE_DIR" | awk '{size=$1; size=size*1024; size=int(size*1.05); printf "%d", size}')
+SIZE=$(du -sb "$BASE_DIR" | awk '{size=$1; size=int(size*1.10); printf "%d", size}')
 
 #########################################################
 # Collect SELinux file_contexts
